@@ -29,13 +29,43 @@ class IntentDeterminationEngine(pyee.EventEmitter):
         self._regex_strings = set()
         self.tagger = EntityTagger(self.trie, self.tokenizer, self.regular_expressions_entities)
         self.intent_parsers = []
+        self.history = []
+
+
+    def __populate_linked(self, parser, intent):
+        missing_partners = []
+        print "parser:", parser
+        for group in parser.linked_one_of:
+            for parner in group:
+                if parner not in intent and parner not in missing_partners:
+                    missing_partners.append(parner)
+
+        print "missing_partners:", missing_partners
+        for prev_intent in self.history:
+            no_missing_partners = True
+            for parner in missing_partners:
+                if parner in intent and intent.get(parner):
+                    continue
+                no_missing_partners = False
+                prev_value = prev_intent.get(parner)
+                if prev_value:
+                    intent[parner] = prev_value
+            if no_missing_partners:
+                break
+
 
     def __best_intent(self, parse_result):
         best_intent = None
+        best_intent_parser = None
         for intent in self.intent_parsers:
             i = intent.validate(parse_result.get('tags'), parse_result.get('confidence'))
             if not best_intent or (i and i.get('confidence') > best_intent.get('confidence')):
                 best_intent = i
+                best_intent_parser = intent
+
+        if best_intent and best_intent.get("confidence") > 0:
+            self.__populate_linked(best_intent_parser, best_intent)
+            self.history.append(best_intent)
 
         return best_intent
 
