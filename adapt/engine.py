@@ -34,13 +34,11 @@ class IntentDeterminationEngine(pyee.EventEmitter):
 
     def __populate_linked(self, parser, intent):
         missing_partners = []
-        print "parser:", parser
         for group in parser.linked_one_of:
             for parner in group:
                 if parner not in intent and parner not in missing_partners:
                     missing_partners.append(parner)
 
-        print "missing_partners:", missing_partners
         for prev_intent in self.history:
             no_missing_partners = True
             for parner in missing_partners:
