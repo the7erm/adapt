@@ -61,12 +61,14 @@ def resolve_one_of(tags, at_least_one):
 
 
 class Intent(object):
-    def __init__(self, name, requires, at_least_one, optional, linked_one_of):
+    def __init__(self, name, requires, at_least_one, optional, linked_one_of,
+                 mycroft_response):
         self.name = name
         self.requires = requires
         self.at_least_one = at_least_one
         self.optional = optional
         self.linked_one_of = linked_one_of
+        self.mycroft_response = mycroft_response
 
     def validate(self, tags, confidence):
         result = {'intent_type': self.name}
@@ -127,6 +129,7 @@ class IntentBuilder(object):
         self.requires = []
         self.optional = []
         self.linked_one_of = []
+        self.mycroft_response = []
         self.name = intent_name
 
     def one_of(self, *args):
@@ -205,4 +208,4 @@ class IntentBuilder(object):
         :return: an Intent instance.
         """
         return Intent(self.name, self.requires, self.at_least_one, self.optional,
-                      self.linked_one_of)
+                      self.linked_one_of, self.mycroft_response)

@@ -1,6 +1,10 @@
 import re
 import heapq
 import pyee
+import string
+import random
+from pprint import pprint, pformat
+
 from adapt.entity_tagger import EntityTagger
 from adapt.parser import Parser
 from adapt.tools.text.tokenizer import EnglishTokenizer
@@ -8,6 +12,22 @@ from adapt.tools.text.trie import Trie
 
 __author__ = 'seanfitz'
 
+
+def id_generator(size=8, chars=(string.ascii_uppercase + string.digits +
+                                string.ascii_lowercase)):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+class ContextManager(object):
+    def __init__(self):
+        self.history = []
+        self.objs = {}
+
+    def insert(self, intent):
+        self.history.insert(0, intent)
+        _id = intent.get("id")
+        self.objs[_id] = intent
+
+context_manager = ContextManager()
 
 class IntentDeterminationEngine(pyee.EventEmitter):
     """
@@ -29,7 +49,6 @@ class IntentDeterminationEngine(pyee.EventEmitter):
         self._regex_strings = set()
         self.tagger = EntityTagger(self.trie, self.tokenizer, self.regular_expressions_entities)
         self.intent_parsers = []
-        self.history = []
 
     def __has(self, keys, obj):
         has = []
@@ -54,7 +73,7 @@ class IntentDeterminationEngine(pyee.EventEmitter):
                 # There's at least 1 primary identifier
                 continue
 
-            for prev_intent in self.history:
+            for prev_intent in context_manager.history:
                 has_primaries, missing_primaries = self.__has(primaries, intent)
                 if has_primaries:
                     break
@@ -77,11 +96,13 @@ class IntentDeterminationEngine(pyee.EventEmitter):
 
         if best_intent and best_intent.get("confidence") > 0:
             self.__populate_linked(best_intent_parser, best_intent)
-            self.history.append(best_intent)
+            context_manager.insert(best_intent)
+
+
 
         return best_intent
 
-    def determine_intent(self, utterance, num_results=1):
+    def determine_intent(self, utterance, num_results=1, mycroft_response=None):
         """
         Given an utterance, provide a valid intent.
 
@@ -95,12 +116,27 @@ class IntentDeterminationEngine(pyee.EventEmitter):
         parser.on('tagged_entities',
                   (lambda result:
                    self.emit("tagged_entities", result)))
-
+        yielded = False
         for result in parser.parse(utterance, N=num_results):
-            self.emit("parse_result", result)
             best_intent = self.__best_intent(result)
             if best_intent and best_intent.get('confidence', 0.0) > 0:
+                best_intent['id'] = id_generator()
+                best_intent['utterance'] = utterance
+                yielded = True
                 yield best_intent
+
+        if not yielded and mycroft_response is None:
+            for h in context_manager.history:
+                if yielded:
+                    break
+                mycroft_response = h.get("mycroft_response")
+                if not mycroft_response:
+                    continue
+                utter = "%s %s" % (mycroft_response, utterance)
+                for intent in self.determine_intent(
+                    utter, num_results=1, mycroft_response=mycroft_response):
+                    yielded = True
+                    yield intent
 
     def register_entity(self, entity_value, entity_type, alias_of=None):
         """
