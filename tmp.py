@@ -98,4 +98,5 @@ if __name__ == "__main__":
             print(json.dumps(intent, indent=4))
             intent['mycroft_response'] = "It will be 67 degrees with a 9pm sunset this saturday."
 
+    print "-=[ history ]======"
     pprint(context_manager.history)
