@@ -44,10 +44,8 @@ class IntentDeterminationEngine(pyee.EventEmitter):
 
 
     def __populate_linked(self, parser, intent):
-        print "linked_one_of:", parser.linked_one_of
         if not parser.linked_one_of:
             return
-        print "parser.linked_one_of:", parser.linked_one_of
 
         for primaries, secondary in parser.linked_one_of:
             has_primaries, missing_primaries = self.__has(primaries, intent)
@@ -58,14 +56,12 @@ class IntentDeterminationEngine(pyee.EventEmitter):
 
             for prev_intent in self.history:
                 has_primaries, missing_primaries = self.__has(primaries, intent)
-                print "missing_primaries:", missing_primaries
                 if has_primaries:
                     break
                 for key in missing_primaries:
                     if key in intent and intent.get(key):
                         continue
                     prev_value = prev_intent.get(key)
-                    print "prev:", prev_intent
                     if prev_value:
                         intent[key] = prev_value
 
