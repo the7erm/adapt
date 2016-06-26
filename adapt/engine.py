@@ -31,25 +31,43 @@ class IntentDeterminationEngine(pyee.EventEmitter):
         self.intent_parsers = []
         self.history = []
 
+    def __has(self, keys, obj):
+        has = []
+        missing = []
+        for k in keys:
+            if k in obj and obj.get(k):
+                has.append(k)
+            else:
+                missing.append(k)
+
+        return has, missing
+
 
     def __populate_linked(self, parser, intent):
-        missing_partners = []
-        for group in parser.linked_one_of:
-            for parner in group:
-                if parner not in intent and parner not in missing_partners:
-                    missing_partners.append(parner)
+        print "linked_one_of:", parser.linked_one_of
+        if not parser.linked_one_of:
+            return
+        print "parser.linked_one_of:", parser.linked_one_of
 
-        for prev_intent in self.history:
-            no_missing_partners = True
-            for parner in missing_partners:
-                if parner in intent and intent.get(parner):
-                    continue
-                no_missing_partners = False
-                prev_value = prev_intent.get(parner)
-                if prev_value:
-                    intent[parner] = prev_value
-            if no_missing_partners:
-                break
+        for primaries, secondary in parser.linked_one_of:
+            has_primaries, missing_primaries = self.__has(primaries, intent)
+
+            if has_primaries:
+                # There's at least 1 primary identifier
+                continue
+
+            for prev_intent in self.history:
+                has_primaries, missing_primaries = self.__has(primaries, intent)
+                print "missing_primaries:", missing_primaries
+                if has_primaries:
+                    break
+                for key in missing_primaries:
+                    if key in intent and intent.get(key):
+                        continue
+                    prev_value = prev_intent.get(key)
+                    print "prev:", prev_intent
+                    if prev_value:
+                        intent[key] = prev_value
 
 
     def __best_intent(self, parse_result):

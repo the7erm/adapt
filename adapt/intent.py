@@ -140,9 +140,32 @@ class IntentBuilder(object):
         self.at_least_one.append(args)
         return self
 
-    def link_one_of(self, *args):
-        self.at_least_one.append(args)
-        self.linked_one_of.append(args)
+    def link_one_of(self, primary, secondary):
+        """
+
+        :param primary: tuple notation list of entity names that must be set
+                              before intent is considered valid.
+        :param secondary tuple notation list of entry names that may be set
+                               before an intent is considered valid.
+
+        :return: self
+        """
+        group = []
+        if isinstance(primary, (tuple, list)):
+            for p in primary:
+                group.append(p)
+        else:
+            group.append(primary)
+            primary = (primary,)
+        if isinstance(secondary, (tuple, list)):
+            for p in secondary:
+                group.append(p)
+        else:
+            group.append(secondary)
+            secondary = (secondary,)
+
+        self.one_of(*group)
+        self.linked_one_of.append((primary, secondary))
         return self
 
     def require(self, entity_type, attribute_name=None):
